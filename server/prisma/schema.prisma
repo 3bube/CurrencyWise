@@ -13,3 +13,154 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+// User model to represent application users
+model User {
+  id        String   @id @default(cuid())
+  firebaseUid String @unique // Firebase UID for authentication
+  email     String   @unique
+  name      String?
+  password  String   // optional if using Firebase/Auth0
+  createdAt DateTime @default(now())
+
+  accounts      Account[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  goals         Goal[]
+  importedFiles ImportedFile[]
+  categories    Category[]
+}
+
+// Account model to represent user accounts
+model Account {
+  id         String   @id @default(cuid())
+  name       String
+  type       AccountType
+  currency   String
+  balance    Float     @default(0)
+  icon       String?
+  createdAt  DateTime  @default(now())
+
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT_CARD
+  INVESTMENT
+}
+
+// Transaction model to represent financial transactions
+model Transaction {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  currency    String
+  date        DateTime
+  type        TransactionType
+  category    String
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+
+  accountId   String
+  account     Account   @relation(fields: [accountId], references: [id])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+// Budget model to represent user budgets
+model Budget {
+  id           String   @id @default(cuid())
+  category     String
+  budgetAmount Float
+  spentAmount  Float     @default(0)
+  currency     String
+  period       BudgetPeriod
+  status       BudgetStatus @default(ACTIVE)
+
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  WEEKLY
+  YEARLY
+}
+
+enum BudgetStatus {
+  ACTIVE
+  EXCEEDED
+  COMPLETED
+}
+
+// Goal model to represent user financial goals
+model Goal {
+  id            String   @id @default(cuid())
+  title         String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  currency      String
+  deadline      DateTime
+  status        GoalStatus @default(IN_PROGRESS)
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+}
+
+enum GoalStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+// ExchangeRate model to represent currency exchange rates
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  baseCurrency String
+  targetCurrency String
+  rate         Float
+  fetchedAt    DateTime @default(now())
+
+  // Optional index to avoid duplicate entries
+  @@unique([baseCurrency, targetCurrency, fetchedAt])
+}
+
+// ImportedFile model to represent files uploaded by users
+model ImportedFile {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileType  FileType
+  uploadedAt DateTime @default(now())
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+enum FileType {
+  CSV
+  OFX
+}
+
+// Category model to represent transaction categories
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String?
+  isDefault Boolean  @default(false)
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+}
